@@ -2,223 +2,247 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Adjective Preposition, What's your Position?</title>
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; background: #f0f4f8; margin: 0; padding: 0; }
-    h1 { 
-      font-size: 2.5em; 
-      margin: 20px 0; 
-      background: linear-gradient(90deg, #a855f7, #ec4899, #f97316);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
-    }
-    .setup { background: #fff; padding: 20px; margin: 20px auto; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 400px; }
-    .player-input { margin-bottom: 15px; text-align: left; }
-    .color-options { display: flex; gap: 10px; margin-top: 8px; }
-    .color-circle { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 2px solid #fff; box-shadow: 0 0 3px rgba(0,0,0,0.3); }
-    .color-circle.selected { border: 3px solid #000; }
-    button { margin: 10px; padding: 8px 16px; font-size: 16px; border: none; border-radius: 8px; cursor: pointer; background: #3b82f6; color: white; font-weight: bold; }
-    button:hover { background: #2563eb; }
-    canvas { background: #fff; border: 2px solid #333; margin-top: 20px; display: none; }
-    #controls { display: none; margin: 15px; }
-    #status { margin: 10px; font-weight: bold; }
-    #questionModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; }
-    #questionBox { background: #fff; padding: 20px; border-radius: 12px; max-width: 400px; text-align: left; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
-    #questionBox h2 { margin-top: 0; }
+    :root{ --tile:84; --gapX:26; --gapY:120; }
+    body{font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial; background:#f0f4f8; margin:0}
+    h1{margin:18px 0 6px; text-align:center; font-size:clamp(26px,4vw,40px); font-weight:900; letter-spacing:.3px;
+       background: linear-gradient(90deg,#a855f7,#ec4899,#f97316); -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+       text-shadow:2px 2px 4px rgba(0,0,0,.18)}
+    .wrap{display:flex;flex-direction:column;align-items:center;gap:12px}
+    .setup{background:#fff; padding:16px; border-radius:14px; box-shadow:0 8px 30px rgba(0,0,0,.08); width:min(720px,92vw)}
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .player-input{display:flex;flex-direction:column;gap:6px; padding:10px 12px; border:1px solid #e5e7eb; border-radius:12px}
+    .color-options{display:flex;gap:8px}
+    .swatch{width:28px;height:28px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.2);cursor:pointer}
+    .swatch.selected{box-shadow:0 0 0 3px #111}
+    button{padding:10px 14px;border:0;border-radius:10px;background:#2563eb;color:#fff;font-weight:800;cursor:pointer}
+    button.secondary{background:#6b7280}
+    #controls{display:none;gap:8px;align-items:center}
+    #status{font-weight:700}
+    canvas{background:#fff;border:3px solid #111;border-radius:14px; display:none; touch-action:none}
+    /* Modal */
+    #questionModal{display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); align-items:center; justify-content:center; padding:20px}
+    #questionBox{background:#fff; padding:18px 16px; border-radius:14px; max-width:min(560px,92vw); box-shadow:0 10px 30px rgba(0,0,0,.25)}
+    #questionBox h2{margin:0 0 8px}
+    /* Smaller tucked input */
+    #sheetWrapper { font-size:12px; color:#555; margin-top:6px; display:flex; gap:6px; align-items:center; }
+    #sheetUrl { font-size:12px; padding:4px 6px; border-radius:6px; border:1px solid #ccc; min-width:200px; }
   </style>
 </head>
 <body>
-  <h1>Adjective Preposition, What's your Position?</h1>
+  <div class="wrap">
+    <h1>Adjective Preposition, What's your Position?</h1>
 
-  <div class="setup" id="setup">
-    <h2>Player Setup</h2>
-    <label for="numPlayers">Number of Players:</label>
-    <select id="numPlayers">
-      <option value="2">2</option>
-      <option value="3">3</option>
-      <option value="4">4</option>
-      <option value="5">5</option>
-      <option value="6">6</option>
-    </select>
-    <div id="playerForms"></div>
-    <button id="startBtn">Start Game</button>
+    <!-- Setup -->
+    <div class="setup" id="setup">
+      <div class="row">
+        <label for="numPlayers"><strong>Number of Players:</strong></label>
+        <select id="numPlayers">
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
+        </select>
+        <button id="buildBtn" class="secondary">Build Player Forms</button>
+      </div>
+      <div id="playerForms" style="margin-top:10px; display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px"></div>
+      <div id="sheetWrapper">
+        <label for="sheetUrl">Google Sheet (CSV):</label>
+        <input id="sheetUrl" type="text" />
+      </div>
+      <div class="row" style="justify-content:flex-end; margin-top:8px">
+        <button id="startBtn">Start Game</button>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div id="controls" class="row">
+      <button id="rollBtn">Roll Dice</button>
+      <button id="nextBtn" class="secondary">Next Turn</button>
+      <button id="resetBtn" class="secondary">Reset</button>
+      <label style="display:flex;align-items:center;gap:6px; margin-left:8px">
+        <input type="checkbox" id="manualToggle" /> Manual move mode
+      </label>
+      <span id="status"></span>
+    </div>
+
+    <canvas id="board" width="900" height="720" aria-label="Game board"></canvas>
   </div>
 
-  <div id="controls">
-    <button id="rollBtn">Roll Dice</button>
-    <button id="nextBtn">Next Turn</button>
-    <button id="resetBtn">Reset</button>
-    <p id="status"></p>
-  </div>
-
-  <canvas id="board" width="600" height="600"></canvas>
-
+  <!-- Question Modal -->
   <div id="questionModal">
     <div id="questionBox">
       <h2 id="tileLabel">Tile</h2>
-      <p id="questionText"></p>
-      <button onclick="closeModal()">Close</button>
+      <div id="questionText"></div>
+      <div style="text-align:right;margin-top:12px"><button id="closeModal">Close</button></div>
     </div>
   </div>
 
-  <script>
-    const canvas = document.getElementById("board");
-    const ctx = canvas.getContext("2d");
-    const status = document.getElementById("status");
+<script>
+(()=>{
+  // ----- Config -----
+  const TOTAL = 49;
+  const TILES_PER_ROW = 9;
+  const TILE = 84;
+  const STEP_X = 110;
+  const STEP_Y = 120;
+  const RADIUS = 14;
 
-    const cols = 9;
-    const rows = 5;
-    const totalTiles = cols * rows;
-    const tileSize = 60;
+  const palette = ["#ef4444","#f97316","#eab308","#22c55e","#3b82f6","#a855f7"];
+  const tileColors = ["#fde68a","#bbf7d0","#bfdbfe","#fbcfe8"];
 
-    let questions = Array(totalTiles).fill("Loading question...");
+  const canvas = document.getElementById('board');
+  const ctx = canvas.getContext('2d');
+  const status = document.getElementById('status');
+  const setupDiv = document.getElementById('setup');
+  const playerForms = document.getElementById('playerForms');
+  const numPlayersSelect = document.getElementById('numPlayers');
+  const buildBtn = document.getElementById('buildBtn');
+  const startBtn = document.getElementById('startBtn');
+  const sheetUrlInput = document.getElementById('sheetUrl');
+  sheetUrlInput.value = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8cxYccJYnsPhMVdzrNSRhGtfitFog4ksNy4r9Jfm34OaicPsbBwMmxyooQBD-_FevXncXo7rIkIO1/pub?output=csv";
+  const controls = document.getElementById('controls');
+  const rollBtn = document.getElementById('rollBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const manualToggle = document.getElementById('manualToggle');
+  const modal = document.getElementById('questionModal');
+  const tileLabel = document.getElementById('tileLabel');
+  const questionText = document.getElementById('questionText');
+  const closeModalBtn = document.getElementById('closeModal');
 
-    // Fetch questions from Google Sheets CSV
-    const sheetUrl = "https://docs.google.com/spreadsheets/d/e/YOUR_SHEET_ID/pub?output=csv";
-    fetch(sheetUrl)
-      .then(res => res.text())
-      .then(data => {
-        const lines = data.trim().split("\n");
-        lines.shift(); // remove header
-        lines.forEach((line, i) => {
-          const parts = line.split(",");
-          if(parts[1]) {
-            questions[i] = parts[1];
-          }
-        });
-      });
+  let path = [];
+  let players = [];
+  let currentPlayer = 0;
+  let questions = Array(TOTAL).fill('Loading...');
 
-    // Build zig-zag path
-    let path = [];
-    for (let r = rows - 1; r >= 0; r--) {
-      if ((rows - 1 - r) % 2 === 0) {
-        for (let c = 0; c < cols; c++) path.push([c, r]);
+  function roundedRect(x,y,w,h,r){
+    const rr = Math.min(r, w/2, h/2);
+    ctx.beginPath();
+    ctx.moveTo(x+rr,y);
+    ctx.arcTo(x+w,y,x+w,y+h,rr);
+    ctx.arcTo(x+w,y+h,x,y+h,rr);
+    ctx.arcTo(x,y+h,x,y,rr);
+    ctx.arcTo(x,y,x+w,y,rr);
+    ctx.closePath();
+  }
+
+  function drawBoard(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    path.forEach((p,i)=>{
+      const x = p.x - TILE/2, y = p.y - TILE/2;
+      ctx.fillStyle = tileColors[i % tileColors.length];
+      roundedRect(x,y,TILE,TILE,RADIUS);
+      ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#111'; ctx.stroke();
+      ctx.fillStyle = '#111'; ctx.font = 'bold 14px Inter, Arial'; ctx.fillText(String(i+1), p.x-5, p.y+5);
+    });
+    players.forEach((pl,idx)=>{
+      const p = path[pl.pos]; if(!p) return;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 14 + idx*2, 0, Math.PI*2);
+      ctx.fillStyle = pl.color; ctx.fill();
+      ctx.fillStyle = '#000'; ctx.font='bold 10px Inter, Arial';
+      ctx.fillText(pl.name.slice(0,1).toUpperCase(), p.x-3, p.y+4);
+    });
+  }
+
+  function buildPath(){
+    path = [];
+    const startX = 90;
+    const startY = canvas.height - 120;
+    let i=0, row=0;
+    while(i < TOTAL){
+      const y = startY - row*STEP_Y;
+      if(row % 2 === 0){
+        for(let c=0;c<TILES_PER_ROW && i<TOTAL;c++){
+          path.push({x:startX + c*STEP_X, y}); i++; }
       } else {
-        for (let c = cols - 1; c >= 0; c--) path.push([c, r]);
+        for(let c=TILES_PER_ROW-1;c>=0 && i<TOTAL;c--){
+          path.push({x:startX + c*STEP_X, y}); i++; }
       }
+      if(i < TOTAL){
+        const last = path[path.length-1];
+        path.push({x:last.x, y: y + STEP_Y/2});
+        i++;
+      }
+      row++;
     }
+  }
 
-    const palette = ["#ef4444", "#3b82f6", "#22c55e", "#eab308", "#a855f7", "#f97316"];
-
-    let players = [];
-    let currentPlayer = 0;
-
-    function drawBoard() {
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      path.forEach(([c,r],i) => {
-        ctx.fillStyle = ["#fde68a","#bbf7d0","#bfdbfe","#fbcfe8"][i % 4];
-        ctx.fillRect(c*tileSize, r*tileSize, tileSize, tileSize);
-        ctx.strokeRect(c*tileSize, r*tileSize, tileSize, tileSize);
-        ctx.fillStyle = "#000";
-        ctx.fillText(i+1, c*tileSize+20, r*tileSize+30);
+  async function loadQuestions(url){
+    if(!url){ questions = Array(TOTAL).fill('').map((_,i)=>`Question ${i+1}`); return; }
+    try{
+      const res = await fetch(url);
+      const txt = await res.text();
+      const lines = txt.trim().split(/\r?\n/);
+      if(lines.length && /tile|question/i.test(lines[0])) lines.shift();
+      questions = lines.slice(0,TOTAL).map(line => {
+        const parts = line.split(',');
+        return (parts[1]||parts[0]||'').trim();
       });
-      // Draw players
-      players.forEach((p, idx) => {
-        if(p.pos < path.length) {
-          const [c,r] = path[p.pos];
-          ctx.beginPath();
-          ctx.arc(c*tileSize+tileSize/2, r*tileSize+tileSize/2, 10+idx*3, 0, Math.PI*2);
-          ctx.fillStyle = p.color;
-          ctx.fill();
-          ctx.fillStyle = "#000";
-          ctx.fillText(p.name[0].toUpperCase(), c*tileSize+tileSize/2-4, r*tileSize+tileSize/2+4);
-        }
+      while(questions.length < TOTAL) questions.push('');
+    }catch(err){
+      console.error(err); questions = Array(TOTAL).fill('').map((_,i)=>`Question ${i+1}`);
+    }
+  }
+
+  function rollDice(){ const r = Math.floor(Math.random()*6)+1; moveBy(r); status.textContent = `${players[currentPlayer].name} rolled ${r}`; }
+  function moveBy(steps){ const pl = players[currentPlayer]; pl.pos = Math.min(pl.pos + steps, TOTAL-1); drawBoard(); onLand(pl.pos); }
+  function onLand(index){ if(index>=0 && index<TOTAL){ tileLabel.textContent = `Tile #${index+1}`; questionText.textContent = questions[index] || `Question ${index+1}`; modal.style.display='flex'; } }
+  function nextTurn(){ currentPlayer = (currentPlayer+1) % players.length; status.textContent = `Turn: ${players[currentPlayer].name}`; }
+  function resetGame(){ players.forEach(p=>p.pos=0); currentPlayer=0; drawBoard(); status.textContent = 'Game reset.'; }
+
+  canvas.addEventListener('click', (e)=>{
+    if(!manualToggle.checked) return;
+    const rect = canvas.getBoundingClientRect();
+    const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const my = (e.clientY - rect.top) * (canvas.height / rect.height);
+    let best=-1, bestD=1e9;
+    path.forEach((p,i)=>{ const dx=p.x-mx, dy=p.y-my; const d=dx*dx+dy*dy; if(d<bestD){bestD=d; best=i;} });
+    if(best>=0){ players[currentPlayer].pos = best; drawBoard(); onLand(best); }
+  });
+
+  document.getElementById('closeModal').onclick = ()=> modal.style.display='none';
+  modal.addEventListener('click', e=>{ if(e.target===modal) modal.style.display='none'; });
+
+  const colorChoices = ["red","blue","green","yellow","purple","orange"];
+  function buildForms(){
+    playerForms.innerHTML='';
+    const n = parseInt(numPlayersSelect.value,10);
+    for(let i=0;i<n;i++){
+      const box=document.createElement('div'); box.className='player-input';
+      box.innerHTML = `<label><strong>Player ${i+1} Name</strong><br><input id="pname${i}" type="text" placeholder="Player ${i+1}" style="padding:8px;border:1px solid #e5e7eb;border-radius:10px;width:100%"/></label>`;
+      const colorsDiv=document.createElement('div'); colorsDiv.className='color-options';
+      colorChoices.forEach(col=>{
+        const dot=document.createElement('div'); dot.className='swatch'; dot.style.background=col; dot.dataset.color=col;
+        dot.onclick=()=>{ colorsDiv.querySelectorAll('.swatch').forEach(s=>s.classList.remove('selected')); dot.classList.add('selected'); };
+        colorsDiv.appendChild(dot);
       });
+      box.appendChild(colorsDiv); playerForms.appendChild(box);
     }
+  }
+  buildForms();
+  buildBtn.onclick=buildForms;
 
-    function rollDice() {
-      const roll = Math.floor(Math.random()*6)+1;
-      status.innerText = `${players[currentPlayer].name} rolled a ${roll}`;
-      players[currentPlayer].pos += roll;
-      if(players[currentPlayer].pos >= totalTiles-1){
-        players[currentPlayer].pos = totalTiles-1;
-        status.innerText = `${players[currentPlayer].name} wins!`;
-      }
-      drawBoard();
-      showQuestion(players[currentPlayer].pos);
+  startBtn.onclick= async ()=>{
+    players=[]; const n=parseInt(numPlayersSelect.value,10); const taken=new Set();
+    for(let i=0;i<n;i++){
+      const name=document.getElementById(`pname${i}`).value||`Player ${i+1}`;
+      const selected=playerForms.children[i].querySelector('.swatch.selected');
+      let color=selected?selected.dataset.color:colorChoices.find(c=>!taken.has(c))||palette[i%palette.length];
+      taken.add(color); players.push({name,color,pos:0});
     }
+    await loadQuestions(sheetUrlInput.value.trim());
+    buildPath(); setupDiv.style.display='none'; controls.style.display='flex'; canvas.style.display='block'; drawBoard(); status.textContent=`Turn: ${players[0].name}`;
+  };
 
-    function nextTurn() {
-      currentPlayer = (currentPlayer+1)%players.length;
-      status.innerText = `Turn: ${players[currentPlayer].name}`;
-    }
-
-    function resetGame() {
-      players.forEach(p => p.pos=0);
-      currentPlayer=0;
-      status.innerText = "Game reset.";
-      drawBoard();
-    }
-
-    function showQuestion(tileIndex){
-      document.getElementById("tileLabel").innerText = `Tile #${tileIndex+1}`;
-      document.getElementById("questionText").innerText = questions[tileIndex] || "No question.";
-      document.getElementById("questionModal").style.display = "flex";
-    }
-
-    function closeModal(){
-      document.getElementById("questionModal").style.display = "none";
-    }
-
-    // Setup UI
-    const numPlayersSelect = document.getElementById("numPlayers");
-    const playerForms = document.getElementById("playerForms");
-    const startBtn = document.getElementById("startBtn");
-    const setupDiv = document.getElementById("setup");
-
-    const colors = ["red","blue","green","yellow","purple","orange"];
-
-    numPlayersSelect.addEventListener("change", buildForms);
-
-    function buildForms(){
-      playerForms.innerHTML = "";
-      const num = parseInt(numPlayersSelect.value);
-      for(let i=0;i<num;i++){
-        const div=document.createElement("div");
-        div.className="player-input";
-        div.innerHTML = `<label>Player ${i+1} Name: <input type="text" id="pname${i}"/></label>`;
-        const colorDiv=document.createElement("div");
-        colorDiv.className="color-options";
-        colors.forEach(col=>{
-          const btn=document.createElement("div");
-          btn.className="color-circle";
-          btn.style.background=col;
-          btn.dataset.color=col;
-          btn.onclick=()=>{
-            // Deselect others for this player
-            colorDiv.querySelectorAll(".color-circle").forEach(c=>c.classList.remove("selected"));
-            btn.classList.add("selected");
-          };
-          colorDiv.appendChild(btn);
-        });
-        div.appendChild(colorDiv);
-        playerForms.appendChild(div);
-      }
-    }
-
-    buildForms();
-
-    startBtn.onclick = ()=>{
-      players=[];
-      const num=parseInt(numPlayersSelect.value);
-      for(let i=0;i<num;i++){
-        const name=document.getElementById(`pname${i}`).value || `Player ${i+1}`;
-        const selected=document.querySelectorAll(".player-input")[i].querySelector(".color-circle.selected");
-        const color=selected?selected.dataset.color:colors[i];
-        players.push({name,pos:0,color});
-      }
-      setupDiv.style.display="none";
-      document.getElementById("controls").style.display="block";
-      canvas.style.display="block";
-      drawBoard();
-      status.innerText = `Turn: ${players[0].name}`;
-    };
-
-    document.getElementById("rollBtn").onclick = rollDice;
-    document.getElementById("nextBtn").onclick = nextTurn;
-    document.getElementById("resetBtn").onclick = resetGame;
-  </script>
+  rollBtn.onclick=rollDice;
+  nextBtn.onclick=nextTurn;
+  resetBtn.onclick=resetGame;
+})();
+</script>
 </body>
 </html>
