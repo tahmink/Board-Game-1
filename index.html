@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Adjective Preposition, What's your Position?</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; background: #f0f4f8; margin: 0; padding: 0; }
+    h1 { 
+      font-size: 2.5em; 
+      margin: 20px 0; 
+      background: linear-gradient(90deg, #a855f7, #ec4899, #f97316);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    }
+    .setup { background: #fff; padding: 20px; margin: 20px auto; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 400px; }
+    .player-input { margin-bottom: 15px; text-align: left; }
+    .color-options { display: flex; gap: 10px; margin-top: 8px; }
+    .color-circle { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 2px solid #fff; box-shadow: 0 0 3px rgba(0,0,0,0.3); }
+    .color-circle.selected { border: 3px solid #000; }
+    button { margin: 10px; padding: 8px 16px; font-size: 16px; border: none; border-radius: 8px; cursor: pointer; background: #3b82f6; color: white; font-weight: bold; }
+    button:hover { background: #2563eb; }
+    canvas { background: #fff; border: 2px solid #333; margin-top: 20px; display: none; }
+    #controls { display: none; margin: 15px; }
+    #status { margin: 10px; font-weight: bold; }
+    #questionModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; }
+    #questionBox { background: #fff; padding: 20px; border-radius: 12px; max-width: 400px; text-align: left; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+    #questionBox h2 { margin-top: 0; }
+  </style>
+</head>
+<body>
+  <h1>Adjective Preposition, What's your Position?</h1>
+
+  <div class="setup" id="setup">
+    <h2>Player Setup</h2>
+    <label for="numPlayers">Number of Players:</label>
+    <select id="numPlayers">
+      <option value="2">2</option>
+      <option value="3">3</option>
+      <option value="4">4</option>
+      <option value="5">5</option>
+      <option value="6">6</option>
+    </select>
+    <div id="playerForms"></div>
+    <button id="startBtn">Start Game</button>
+  </div>
+
+  <div id="controls">
+    <button id="rollBtn">Roll Dice</button>
+    <button id="nextBtn">Next Turn</button>
+    <button id="resetBtn">Reset</button>
+    <p id="status"></p>
+  </div>
+
+  <canvas id="board" width="600" height="600"></canvas>
+
+  <div id="questionModal">
+    <div id="questionBox">
+      <h2 id="tileLabel">Tile</h2>
+      <p id="questionText"></p>
+      <button onclick="closeModal()">Close</button>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("board");
+    const ctx = canvas.getContext("2d");
+    const status = document.getElementById("status");
+
+    const cols = 9;
+    const rows = 5;
+    const totalTiles = cols * rows;
+    const tileSize = 60;
+
+    let questions = Array(totalTiles).fill("Loading question...");
+
+    // Fetch questions from Google Sheets CSV
+    const sheetUrl = "https://docs.google.com/spreadsheets/d/e/YOUR_SHEET_ID/pub?output=csv";
+    fetch(sheetUrl)
+      .then(res => res.text())
+      .then(data => {
+        const lines = data.trim().split("\n");
+        lines.shift(); // remove header
+        lines.forEach((line, i) => {
+          const parts = line.split(",");
+          if(parts[1]) {
+            questions[i] = parts[1];
+          }
+        });
+      });
+
+    // Build zig-zag path
+    let path = [];
+    for (let r = rows - 1; r >= 0; r--) {
+      if ((rows - 1 - r) % 2 === 0) {
+        for (let c = 0; c < cols; c++) path.push([c, r]);
+      } else {
+        for (let c = cols - 1; c >= 0; c--) path.push([c, r]);
+      }
+    }
+
+    const palette = ["#ef4444", "#3b82f6", "#22c55e", "#eab308", "#a855f7", "#f97316"];
+
+    let players = [];
+    let currentPlayer = 0;
+
+    function drawBoard() {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      path.forEach(([c,r],i) => {
+        ctx.fillStyle = ["#fde68a","#bbf7d0","#bfdbfe","#fbcfe8"][i % 4];
+        ctx.fillRect(c*tileSize, r*tileSize, tileSize, tileSize);
+        ctx.strokeRect(c*tileSize, r*tileSize, tileSize, tileSize);
+        ctx.fillStyle = "#000";
+        ctx.fillText(i+1, c*tileSize+20, r*tileSize+30);
+      });
+      // Draw players
+      players.forEach((p, idx) => {
+        if(p.pos < path.length) {
+          const [c,r] = path[p.pos];
+          ctx.beginPath();
+          ctx.arc(c*tileSize+tileSize/2, r*tileSize+tileSize/2, 10+idx*3, 0, Math.PI*2);
+          ctx.fillStyle = p.color;
+          ctx.fill();
+          ctx.fillStyle = "#000";
+          ctx.fillText(p.name[0].toUpperCase(), c*tileSize+tileSize/2-4, r*tileSize+tileSize/2+4);
+        }
+      });
+    }
+
+    function rollDice() {
+      const roll = Math.floor(Math.random()*6)+1;
+      status.innerText = `${players[currentPlayer].name} rolled a ${roll}`;
+      players[currentPlayer].pos += roll;
+      if(players[currentPlayer].pos >= totalTiles-1){
+        players[currentPlayer].pos = totalTiles-1;
+        status.innerText = `${players[currentPlayer].name} wins!`;
+      }
+      drawBoard();
+      showQuestion(players[currentPlayer].pos);
+    }
+
+    function nextTurn() {
+      currentPlayer = (currentPlayer+1)%players.length;
+      status.innerText = `Turn: ${players[currentPlayer].name}`;
+    }
+
+    function resetGame() {
+      players.forEach(p => p.pos=0);
+      currentPlayer=0;
+      status.innerText = "Game reset.";
+      drawBoard();
+    }
+
+    function showQuestion(tileIndex){
+      document.getElementById("tileLabel").innerText = `Tile #${tileIndex+1}`;
+      document.getElementById("questionText").innerText = questions[tileIndex] || "No question.";
+      document.getElementById("questionModal").style.display = "flex";
+    }
+
+    function closeModal(){
+      document.getElementById("questionModal").style.display = "none";
+    }
+
+    // Setup UI
+    const numPlayersSelect = document.getElementById("numPlayers");
+    const playerForms = document.getElementById("playerForms");
+    const startBtn = document.getElementById("startBtn");
+    const setupDiv = document.getElementById("setup");
+
+    const colors = ["red","blue","green","yellow","purple","orange"];
+
+    numPlayersSelect.addEventListener("change", buildForms);
+
+    function buildForms(){
+      playerForms.innerHTML = "";
+      const num = parseInt(numPlayersSelect.value);
+      for(let i=0;i<num;i++){
+        const div=document.createElement("div");
+        div.className="player-input";
+        div.innerHTML = `<label>Player ${i+1} Name: <input type="text" id="pname${i}"/></label>`;
+        const colorDiv=document.createElement("div");
+        colorDiv.className="color-options";
+        colors.forEach(col=>{
+          const btn=document.createElement("div");
+          btn.className="color-circle";
+          btn.style.background=col;
+          btn.dataset.color=col;
+          btn.onclick=()=>{
+            // Deselect others for this player
+            colorDiv.querySelectorAll(".color-circle").forEach(c=>c.classList.remove("selected"));
+            btn.classList.add("selected");
+          };
+          colorDiv.appendChild(btn);
+        });
+        div.appendChild(colorDiv);
+        playerForms.appendChild(div);
+      }
+    }
+
+    buildForms();
+
+    startBtn.onclick = ()=>{
+      players=[];
+      const num=parseInt(numPlayersSelect.value);
+      for(let i=0;i<num;i++){
+        const name=document.getElementById(`pname${i}`).value || `Player ${i+1}`;
+        const selected=document.querySelectorAll(".player-input")[i].querySelector(".color-circle.selected");
+        const color=selected?selected.dataset.color:colors[i];
+        players.push({name,pos:0,color});
+      }
+      setupDiv.style.display="none";
+      document.getElementById("controls").style.display="block";
+      canvas.style.display="block";
+      drawBoard();
+      status.innerText = `Turn: ${players[0].name}`;
+    };
+
+    document.getElementById("rollBtn").onclick = rollDice;
+    document.getElementById("nextBtn").onclick = nextTurn;
+    document.getElementById("resetBtn").onclick = resetGame;
+  </script>
+</body>
+</html>
