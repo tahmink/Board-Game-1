@@ -18,6 +18,8 @@
     .player-input{display:flex;flex-direction:column;gap:6px; padding:10px 12px; border:1px solid #e5e7eb; border-radius:12px}
     .color-options{display:flex;gap:8px}
     .swatch{width:28px;height:28px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.2);cursor:pointer}
+    .emoji{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:10px;background:#fff;border:1px solid #e5e7eb;box-shadow:0 1px 0 rgba(0,0,0,.04);cursor:pointer;font-size:22px;}
+    .selected{outline:3px solid #111;}
     .swatch.selected{box-shadow:0 0 0 3px #111}
     button{padding:10px 14px;border:0;border-radius:10px;background:#2563eb;color:#fff;font-family:'Luckiest Guy',cursive;font-size:16px;cursor:pointer}
     button.secondary{background:#6b7280}
@@ -158,11 +160,18 @@
     // tokens
     players.forEach((pl,idx)=>{
       const p = path[pl.pos]; if(!p) return;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 14 + idx*2, 0, Math.PI*2);
-      ctx.fillStyle = pl.color; ctx.fill();
-      ctx.fillStyle = '#000'; ctx.font='bold 14px "Luckiest Guy", cursive'; ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText(pl.name.slice(0,1).toUpperCase(), p.x, p.y);
+      if(pl.tokenType === 'emoji'){
+        ctx.font='bold 28px "Luckiest Guy", cursive';
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillStyle='#111';
+        ctx.fillText(pl.emoji, p.x, p.y);
+      } else {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 14 + idx*2, 0, Math.PI*2);
+        ctx.fillStyle = pl.color || 'red'; ctx.fill();
+        ctx.fillStyle = '#000'; ctx.font='bold 14px "Luckiest Guy", cursive'; ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText(pl.name.slice(0,1).toUpperCase(), p.x, p.y);
+      }
     });
   }
 
@@ -290,39 +299,23 @@
 
   // Build forms for players
   const colorChoices = ["red","blue","green","yellow","purple","orange"];
+  const emojiChoices = ["🪱","🐌","🦎","🐜","👾","🐟"]; // worm, snail, lizard, ant, monster, fish
   function buildForms(){
     playerForms.innerHTML='';
     const n = parseInt(numPlayersSelect.value,10);
     for(let i=0;i<n;i++){
-      const box = document.createElement('div'); box.className='player-input';
-      box.innerHTML = `<label><strong>Player ${i+1} Name</strong><br><input id="pname${i}" type="text" placeholder="Player ${i+1}" style="padding:8px;border:1px solid #e5e7eb;border-radius:10px;width:100%"/></label>`;
-      const colorsDiv = document.createElement('div'); colorsDiv.className='color-options';
-      colorChoices.forEach(col=>{
-        const dot = document.createElement('div'); dot.className='swatch'; dot.style.background=col; dot.dataset.color=col;
-        dot.addEventListener('click',()=>{
-          colorsDiv.querySelectorAll('.swatch').forEach(s=>s.classList.remove('selected'));
-          dot.classList.add('selected');
-        });
-        colorsDiv.appendChild(dot);
-      });
-      box.appendChild(colorsDiv);
-      playerForms.appendChild(box);
-    }
-  }
-  buildForms();
-  buildBtn.addEventListener('click', buildForms);
-
-  // Start game
-  startBtn.addEventListener('click', async ()=>{
-    players = [];
-    const n = parseInt(numPlayersSelect.value,10);
-    const taken = new Set();
-    for(let i=0;i<n;i++){
-      const name = document.getElementById(`pname${i}`).value || `Player ${i+1}`;
-      const selected = playerForms.children[i].querySelector('.swatch.selected');
-      let color = selected ? selected.dataset.color : colorChoices.find(c=>!taken.has(c)) || palette[i%palette.length];
-      taken.add(color);
-      players.push({name, color, pos:0});
+      const name=document.getElementById(`pname${i}`).value||`Player ${i+1}`;
+      const form = playerForms.children[i];
+      const selected = form.querySelector('.selected');
+      let tokenType='color', color, emoji;
+      if(selected){
+        tokenType = selected.dataset.type;
+        if(tokenType==='emoji'){ emoji = selected.dataset.value; }
+        else { color = selected.dataset.value; }
+      } else {
+        color = colorChoices[i%colorChoices.length];
+      }
+      players.push({name, color, emoji, tokenType, pos:0});
     }
 
     await loadQuestions(sheetUrlInput.value.trim());
