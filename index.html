@@ -8,35 +8,32 @@
   <style>
     :root{ --tile:84; --gapY:140; }
     body{font-family: Tahoma, Geneva, Verdana, sans-serif; background:#f0f4f8; margin:0}
-    /* ~25% smaller title per your request earlier */
     h1{margin:18px 0 6px; text-align:center; font-size:clamp(20px,3.2vw,32px); font-weight:900; letter-spacing:.3px;
        background: linear-gradient(90deg,#a855f7,#ec4899,#f97316); -webkit-background-clip:text; -webkit-text-fill-color:transparent;
-       text-shadow:2px 2px 4px rgba(0,0,0,.18)}
+       text-shadow:2px 2px 4px rgba(0,0,0,.18); display:none }
     .wrap{display:flex;flex-direction:column;align-items:center;gap:12px}
-    .setup{background:#fff; padding:16px; border-radius:14px; box-shadow:0 8px 30px rgba(0,0,0,.08); width:min(820px,92vw)}
+    .setup{background:#fff; padding:16px; border-radius:14px; box-shadow:0 8px 30px rgba(0,0,0,.08); width:min(860px,92vw)}
     .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-    .player-input{display:flex;flex-direction:column;gap:6px; padding:10px 12px; border:1px solid #e5e7eb; border-radius:12px}
-    .color-options{display:flex;gap:8px}
-    .swatch{width:28px;height:28px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.2);cursor:pointer}
-    .emoji{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:10px;background:#fff;border:1px solid #e5e7eb;box-shadow:0 1px 0 rgba(0,0,0,.04);cursor:pointer;font-size:22px;}
-    .selected{outline:3px solid #111;}
-    .swatch.selected{box-shadow:0 0 0 3px #111}
+    .player-input{display:flex;flex-direction:column;gap:6px; padding:10px 12px; border:1px solid #e5e7eb; border-radius:12px; transition:box-shadow .15s}
+    .color-options{display:flex;gap:8px; flex-wrap:wrap}
+    .swatch{width:32px;height:32px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.2);cursor:pointer}
+    .emoji{width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:10px;background:#fff;border:1px solid #e5e7eb;box-shadow:0 1px 0 rgba(0,0,0,.04);cursor:pointer;font-size:26px}
+    .selected{outline:3px solid #111}
     button{padding:10px 14px;border:0;border-radius:10px;background:#2563eb;color:#fff;font-family:'Luckiest Guy',cursive;font-size:16px;cursor:pointer}
     button.secondary{background:#6b7280}
     #controls{display:none;gap:8px;align-items:center}
     #status{font-weight:700}
-    canvas{background:#fff;border:3px solid #111;border-radius:14px; display:none; touch-action:none; width:min(98vw, 1200px); height:auto;}
+    canvas{background:#fff;border:3px solid #111;border-radius:14px; display:none; touch-action:none; width:min(98vw, 1300px); height:auto}
     #questionModal{display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); align-items:center; justify-content:center; padding:20px}
-    #questionBox{background:#fff; padding:18px 16px; border-radius:14px; max-width:min(560px,92vw); box-shadow:0 10px 30px rgba(0,0,0,.25); font-family:'Luckiest Guy',cursive;}
+    #questionBox{background:#fff; padding:18px 16px; border-radius:14px; max-width:min(560px,92vw); box-shadow:0 10px 30px rgba(0,0,0,.25); font-family:'Luckiest Guy',cursive}
     #questionBox h2{margin:0 0 8px}
-    /* Tucked inputs */
-    #sheetWrapper, #titleWrapper { font-size:12px; color:#555; margin-top:6px; display:flex; gap:6px; align-items:center; }
-    #sheetUrl, #customTitle { font-size:12px; padding:4px 6px; border-radius:6px; border:1px solid #ccc; min-width:200px; }
+    #sheetWrapper, #titleWrapper { font-size:12px; color:#555; margin-top:6px; display:flex; gap:6px; align-items:center }
+    #sheetUrl, #customTitle { font-size:12px; padding:4px 6px; border-radius:6px; border:1px solid #ccc; min-width:200px }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h1 style="display:none">Board Game: Adjective & Prepositions, What's your Position?</h1>
+    <h1>Board Game: Adjective & Prepositions, What's your Position?</h1>
 
     <div class="setup" id="setup">
       <div class="row">
@@ -50,7 +47,7 @@
         </select>
         <button id="buildBtn" class="secondary">Build Player Forms</button>
       </div>
-      <div id="playerForms" style="margin-top:10px; display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px"></div>
+      <div id="playerForms" style="margin-top:10px; display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:10px"></div>
       <div id="sheetWrapper">
         <label for="sheetUrl">Google Sheet (CSV):</label>
         <input id="sheetUrl" type="text" />
@@ -88,13 +85,13 @@
 <script>
 (()=>{
   // ----- Config -----
-  const TOTAL = 50;            // tiles
+  const TOTAL = 50;            // tiles (50 = FINISH)
   const TILES_PER_ROW = 9;     // horizontal run
   const TILE = 84;             // tile size (px)
   const STEP_Y = 140;          // vertical distance between row centers
   const RADIUS = 14;           // rounded corner radius
 
-  const palette = ["#ef4444","#f97316","#eab308","#22c55e","#3b82f6","#a855f7"]; // token defaults
+  const palette = ["#ef4444","#f97316","#eab308","#22c55e","#3b82f6","#a855f7"]; // fallback colors
   const tileColors = ["#fde68a","#bbf7d0","#bfdbfe","#fbcfe8"]; // board tiles
 
   // ----- DOM -----
@@ -122,7 +119,7 @@
 
   // ----- State -----
   let path = [];            // [{x,y}]
-  let players = [];         // [{name,color,pos}]
+  let players = [];         // [{name,color,emoji,tokenType,pos}]
   let currentPlayer = 0;
   let pendingRoll = 0;      // store dice result when manual mode used
   let questions = Array(TOTAL).fill('Loading...');
@@ -138,6 +135,7 @@
     ctx.arcTo(x,y,x+w,y,rr);
     ctx.closePath();
   }
+
   function drawBoard(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
     // tiles
@@ -157,19 +155,20 @@
         ctx.fillText(String(i+1), p.x, p.y);
       }
     });
-    // tokens
+    // tokens (bigger)
     players.forEach((pl,idx)=>{
       const p = path[pl.pos]; if(!p) return;
-      if(pl.tokenType === 'emoji'){
-        ctx.font='bold 28px "Luckiest Guy", cursive';
+      if(pl.tokenType === 'emoji' && pl.emoji){
+        ctx.font='bold 40px "Luckiest Guy", cursive';
         ctx.textAlign='center'; ctx.textBaseline='middle';
         ctx.fillStyle='#111';
         ctx.fillText(pl.emoji, p.x, p.y);
       } else {
+        const r = 22 + idx*3; // bigger color tokens
         ctx.beginPath();
-        ctx.arc(p.x, p.y, 14 + idx*2, 0, Math.PI*2);
+        ctx.arc(p.x, p.y, r, 0, Math.PI*2);
         ctx.fillStyle = pl.color || 'red'; ctx.fill();
-        ctx.fillStyle = '#000'; ctx.font='bold 14px "Luckiest Guy", cursive'; ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillStyle = '#000'; ctx.font='bold 16px "Luckiest Guy", cursive'; ctx.textAlign='center'; ctx.textBaseline='middle';
         ctx.fillText(pl.name.slice(0,1).toUpperCase(), p.x, p.y);
       }
     });
@@ -179,40 +178,24 @@
 
   function buildPath(){
     path = [];
-    const stepX = TILE; // tiles touch horizontally
+    const stepX = TILE; // tiles touch horizontally (continuous)
     const startX = (canvas.width - (TILES_PER_ROW - 1) * stepX) / 2;
     const startY = canvas.height - 120;
     let i=0, row=0;
     while(i < TOTAL){
       const y = startY - row*STEP_Y;
-      if(row % 2 === 0){
+      if(row % 2 === 0){ // left -> right
         for(let c=0;c<TILES_PER_ROW && i<TOTAL;c++){ path.push({x:startX + c*stepX, y}); i++; }
-      } else {
+      } else { // right -> left
         for(let c=TILES_PER_ROW-1;c>=0 && i<TOTAL;c--){ path.push({x:startX + c*stepX, y}); i++; }
       }
-      if(i < TOTAL){
+      if(i < TOTAL){ // connector tile with outward curve
         const last = path[path.length-1];
-        const midY = y - STEP_Y/2; // halfway up
-        const d = Math.max(0, Math.sqrt(Math.max(0, TILE*TILE - (STEP_Y/2)*(STEP_Y/2))));
-        const shift = (row%2===0 ? +d : -d); // curve OUTWARD
+        const midY = y - STEP_Y/2; // halfway toward next row
+        const shift = (row%2===0 ? stepX*0.5 : -stepX*0.5); // outward
         let cx = last.x + shift;
         const margin = TILE/2 + 10;
         cx = Math.min(canvas.width - margin, Math.max(margin, cx));
-        path.push({x: cx, y: midY});
-        i++;
-      }
-      row++;
-    }
-  }); i++; }
-      } else { // right -> left
-        for(let c=TILES_PER_ROW-1;c>=0 && i<TOTAL;c--){
-          path.push({x:startX + c*stepX, y}); i++; }
-      }
-      if(i < TOTAL){ // connector tile with slight outward curve
-        const last = path[path.length-1];
-        const midY = y - STEP_Y/2; // going upward toward next row
-        const shift = (row%2===0 ? stepX/3 : -stepX/3); // outward
-        const cx = Math.max(margin, Math.min(canvas.width - margin, last.x + shift));
         path.push({x: cx, y: midY});
         i++;
       }
@@ -226,7 +209,6 @@
       const res = await fetch(url);
       const txt = await res.text();
       const lines = txt.trim().split(/\r?\n/);
-      // remove header if present
       if(lines.length && /tile|question/i.test(lines[0])) lines.shift();
       questions = lines.slice(0,TOTAL).map(line => {
         const parts = line.split(',');
@@ -267,10 +249,6 @@
       questionText.textContent = questions[index] || `Question ${index+1}`;
       modal.style.display='flex';
     }
-  }`;
-      questionText.textContent = questions[index] || `Question ${index+1}`;
-      modal.style.display='flex';
-    }
   }
   function nextTurn(){ currentPlayer = (currentPlayer+1) % players.length; logTurn(`Turn: ${players[currentPlayer].name}`); }
   function resetGame(){ players.forEach(p=>p.pos=0); currentPlayer=0; drawBoard(); logTurn('Game reset.'); }
@@ -297,33 +275,80 @@
   closeModalBtn.addEventListener('click', ()=> modal.style.display='none');
   modal.addEventListener('click', (e)=>{ if(e.target===modal) modal.style.display='none'; });
 
-  // Build forms for players
+  // ----- Setup Forms -----
   const colorChoices = ["red","blue","green","yellow","purple","orange"];
   const emojiChoices = ["🪱","🐌","🦎","🐜","👾","🐟"]; // worm, snail, lizard, ant, monster, fish
+
   function buildForms(){
     playerForms.innerHTML='';
     const n = parseInt(numPlayersSelect.value,10);
     for(let i=0;i<n;i++){
-      const name=document.getElementById(`pname${i}`).value||`Player ${i+1}`;
+      const box=document.createElement('div'); box.className='player-input';
+      box.innerHTML = `<label><strong>Player ${i+1} Name</strong><br><input id="pname${i}" type="text" placeholder="Player ${i+1}" style="padding:8px;border:1px solid #e5e7eb;border-radius:10px;width:100%"/></label>`;
+
+      const tokenRow=document.createElement('div'); tokenRow.className='row'; tokenRow.style.marginTop='6px'; tokenRow.style.gap='8px';
+      // colors
+      const colorsDiv=document.createElement('div'); colorsDiv.className='color-options';
+      colorChoices.forEach(col=>{ const dot=document.createElement('div'); dot.className='swatch'; dot.style.background=col; dot.dataset.type='color'; dot.dataset.value=col;
+        dot.onclick=()=>{ tokenRow.querySelectorAll('.selected').forEach(s=>s.classList.remove('selected')); dot.classList.add('selected'); };
+        colorsDiv.appendChild(dot);
+      });
+      // emojis
+      const emojisDiv=document.createElement('div'); emojisDiv.className='color-options';
+      emojiChoices.forEach(em=>{ const btn=document.createElement('div'); btn.className='emoji'; btn.textContent=em; btn.dataset.type='emoji'; btn.dataset.value=em;
+        btn.onclick=()=>{ tokenRow.querySelectorAll('.selected').forEach(s=>s.classList.remove('selected')); btn.classList.add('selected'); };
+        emojisDiv.appendChild(btn);
+      });
+      const labelA=document.createElement('div'); labelA.textContent='Colors:'; labelA.style.minWidth='60px';
+      const labelB=document.createElement('div'); labelB.textContent='Animals:'; labelB.style.minWidth='68px';
+      tokenRow.append(labelA, colorsDiv, labelB, emojisDiv);
+
+      box.appendChild(tokenRow);
+      playerForms.appendChild(box);
+    }
+  }
+  buildForms();
+  buildBtn.addEventListener('click', buildForms);
+
+  // Start game (prevent duplicate tokens)
+  startBtn.addEventListener('click', async ()=>{
+    players = [];
+    const n = parseInt(numPlayersSelect.value,10);
+    const used = new Set();
+
+    // clear any previous highlights
+    Array.from(playerForms.children).forEach(f=> f.style.boxShadow='none');
+
+    for(let i=0;i<n;i++){
+      const name = document.getElementById(`pname${i}`).value || `Player ${i+1}`;
       const form = playerForms.children[i];
       const selected = form.querySelector('.selected');
-      let tokenType='color', color, emoji;
+      let tokenType='color', color=undefined, emoji=undefined, key;
+
       if(selected){
         tokenType = selected.dataset.type;
-        if(tokenType==='emoji'){ emoji = selected.dataset.value; }
-        else { color = selected.dataset.value; }
+        if(tokenType==='emoji'){ emoji = selected.dataset.value; key = `emoji:${emoji}`; }
+        else { color = selected.dataset.value; key = `color:${color}`; }
       } else {
-        color = colorChoices[i%colorChoices.length];
+        // auto-assign first available color not used
+        color = colorChoices.find(c=>!used.has(`color:${c}`)) || palette.find(c=>!used.has(`color:${c}`)) || 'red';
+        key = `color:${color}`;
       }
+
+      if(used.has(key)){
+        // duplicate found -> highlight and abort
+        form.style.boxShadow = '0 0 0 3px #ef4444';
+        alert(`Duplicate token detected for ${name}. Please pick a unique color or animal.`);
+        return;
+      }
+      used.add(key);
       players.push({name, color, emoji, tokenType, pos:0});
     }
 
     await loadQuestions(sheetUrlInput.value.trim());
     const newTitle = (customTitleInput.value || '').trim();
     if(newTitle){ titleEl.textContent = newTitle; document.title = newTitle; }
-    // show title only after starting
     titleEl.style.display = 'block';
-    // switch to game font after start
     document.body.style.fontFamily = '"Luckiest Guy", cursive';
 
     buildPath();
@@ -331,8 +356,6 @@
     controls.style.display='flex';
     canvas.style.display='block';
     drawBoard();
-    logTurn(`Turn: ${players[0].name}`);
-  });
     logTurn(`Turn: ${players[0].name}`);
   });
 
