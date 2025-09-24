@@ -3,11 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Adjective Preposition, What's your Position?</title>
+  <title>Board Game: Adjective & Prepositions, What's your Position?</title>
   <style>
     :root{ --tile:84; --gapX:26; --gapY:140; }
     body{font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial; background:#f0f4f8; margin:0}
-    h1{margin:18px 0 6px; text-align:center; font-size:clamp(26px,4vw,40px); font-weight:900; letter-spacing:.3px;
+    /* Title ~25% smaller */
+    h1{margin:18px 0 6px; text-align:center; font-size:clamp(20px,3.2vw,32px); font-weight:900; letter-spacing:.3px;
        background: linear-gradient(90deg,#a855f7,#ec4899,#f97316); -webkit-background-clip:text; -webkit-text-fill-color:transparent;
        text-shadow:2px 2px 4px rgba(0,0,0,.18)}
     .wrap{display:flex;flex-direction:column;align-items:center;gap:12px}
@@ -21,7 +22,7 @@
     button.secondary{background:#6b7280}
     #controls{display:none;gap:8px;align-items:center}
     #status{font-weight:700}
-    canvas{background:#fff;border:3px solid #111;border-radius:14px; display:none; touch-action:none}
+    canvas{background:#fff;border:3px solid #111;border-radius:14px; display:none; touch-action:none; width:min(98vw, 1200px); height:auto;}
     #questionModal{display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); align-items:center; justify-content:center; padding:20px}
     #questionBox{background:#fff; padding:18px 16px; border-radius:14px; max-width:min(560px,92vw); box-shadow:0 10px 30px rgba(0,0,0,.25)}
     #questionBox h2{margin:0 0 8px}
@@ -31,7 +32,7 @@
 </head>
 <body>
   <div class="wrap">
-    <h1>Adjective Preposition, What's your Position?</h1>
+    <h1>Board Game: Adjective & Prepositions, What's your Position?</h1>
 
     <div class="setup" id="setup">
       <div class="row">
@@ -65,7 +66,7 @@
       <span id="status"></span>
     </div>
 
-    <canvas id="board" width="900" height="720"></canvas>
+    <canvas id="board" width="1200" height="900"></canvas>
   </div>
 
   <div id="questionModal">
@@ -78,7 +79,7 @@
 
 <script>
 (()=>{
-  const TOTAL=49,TILES_PER_ROW=9,TILE=84,STEP_X=110,STEP_Y=140,RADIUS=14;
+  const TOTAL=49,TILES_PER_ROW=9,TILE=84,STEP_Y=140,RADIUS=14; // STEP_X now computed dynamically to avoid clipping
   const palette=["#ef4444","#f97316","#eab308","#22c55e","#3b82f6","#a855f7"];
   const tileColors=["#fde68a","#bbf7d0","#bfdbfe","#fbcfe8"];
 
@@ -92,7 +93,7 @@
   document.getElementById('closeModal').onclick=()=>modal.style.display='none'; modal.addEventListener('click',e=>{if(e.target===modal)modal.style.display='none'});
 
   let path=[],players=[],currentPlayer=0,questions=Array(TOTAL).fill('Loading...');
-  let pendingRoll = 0; // stores dice result when Manual move mode is ON
+  let pendingRoll = 0; // stores dice result in manual mode
 
   function roundedRect(x,y,w,h,r){const rr=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+rr,y);ctx.arcTo(x+w,y,x+w,y+h,rr);ctx.arcTo(x+w,y+h,x,y+h,rr);ctx.arcTo(x,y+h,x,y,rr);ctx.arcTo(x,y,x+w,y,rr);ctx.closePath();}
 
@@ -100,25 +101,41 @@
     path.forEach((p,i)=>{const x=p.x-TILE/2,y=p.y-TILE/2;ctx.fillStyle=tileColors[i%tileColors.length];roundedRect(x,y,TILE,TILE,RADIUS);ctx.fill();ctx.lineWidth=2;ctx.strokeStyle='#111';ctx.stroke();ctx.fillStyle='#111';ctx.font='bold 14px Inter, Arial';ctx.fillText(String(i+1),p.x-5,p.y+5);});
     players.forEach((pl,idx)=>{const p=path[pl.pos];if(!p)return;ctx.beginPath();ctx.arc(p.x,p.y,14+idx*2,0,Math.PI*2);ctx.fillStyle=pl.color;ctx.fill();ctx.fillStyle='#000';ctx.font='bold 10px Inter, Arial';ctx.fillText(pl.name.slice(0,1).toUpperCase(),p.x-3,p.y+4);});}
 
-  function buildPath(){path=[];const startX=90,startY=canvas.height-120;let i=0,row=0;while(i<TOTAL){const y=startY-row*STEP_Y;if(row%2===0){for(let c=0;c<TILES_PER_ROW&&i<TOTAL;c++){path.push({x:startX+c*STEP_X,y});i++;}}else{for(let c=TILES_PER_ROW-1;c>=0&&i<TOTAL;c--){path.push({x:startX+c*STEP_X,y});i++;}}if(i<TOTAL){const last=path[path.length-1]; // curve connector
-      const midY=y-STEP_Y/2;
-      path.push({x:last.x+(row%2===0?STEP_X/3:-STEP_X/3),y:midY});i++;}
-      row++;}}
+  function buildPath(){
+    path=[];
+    // compute spacing to ensure the rightmost tiles are visible
+    const margin = Math.max(TILE/2 + 30, 60);
+    const stepX = (canvas.width - 2*margin) / (TILES_PER_ROW - 1);
+    const startX = margin;
+    const startY = canvas.height - 120;
+    let i=0,row=0;
+    while(i<TOTAL){
+      const y = startY - row*STEP_Y;
+      if(row%2===0){
+        for(let c=0;c<TILES_PER_ROW && i<TOTAL;c++){ path.push({x:startX + c*stepX, y}); i++; }
+      } else {
+        for(let c=TILES_PER_ROW-1;c>=0 && i<TOTAL;c--){ path.push({x:startX + c*stepX, y}); i++; }
+      }
+      if(i<TOTAL){
+        const last = path[path.length-1];
+        const midY = y - STEP_Y/2; // connector upward to next row
+        // bend inward: if we ended on the right, shift left; if on the left, shift right
+        const shift = (row%2===0 ? -stepX/3 : stepX/3);
+        path.push({x:last.x + shift, y: midY});
+        i++;
+      }
+      row++;
+    }
+  }
 
   async function loadQuestions(url){if(!url){questions=Array(TOTAL).fill('').map((_,i)=>`Question ${i+1}`);return;}try{const res=await fetch(url);const txt=await res.text();const lines=txt.trim().split(/\r?\n/);if(lines.length&&/tile|question/i.test(lines[0]))lines.shift();questions=lines.slice(0,TOTAL).map(line=>{const parts=line.split(',');return(parts[1]||parts[0]||'').trim();});while(questions.length<TOTAL)questions.push('');}catch(err){console.error(err);questions=Array(TOTAL).fill('').map((_,i)=>`Question ${i+1}`);}}
 
   function rollDice(){
-    const r = Math.floor(Math.random()*6)+1;
-    if (manualToggle.checked) {
-      pendingRoll = r;
-      status.textContent = `${players[currentPlayer].name} rolled ${r}. Manual mode is ON — click a tile to move.`;
-      // Do NOT auto-move in manual mode
-      return;
-    }
-    moveBy(r);
-    status.textContent = `${players[currentPlayer].name} rolled ${r}`;
+    const r=Math.floor(Math.random()*6)+1;
+    if(manualToggle.checked){ pendingRoll=r; status.textContent=`${players[currentPlayer].name} rolled ${r}. Manual mode is ON — click a tile to move.`; return; }
+    moveBy(r); status.textContent=`${players[currentPlayer].name} rolled ${r}`;
   }
-  function moveBy(steps){const pl=players[currentPlayer];pl.pos=Math.min(pl.pos+steps,TOTAL-1);drawBoard();onLand(pl.pos);}
+  function moveBy(steps){const pl=players[currentPlayer];pl.pos=Math.min(pl.pos+steps,TOTAL-1);drawBoard();onLand(pl.pos);}  
   function onLand(index){if(index>=0&&index<TOTAL){tileLabel.textContent=`Tile #${index+1}`;questionText.textContent=questions[index]||`Question ${index+1}`;modal.style.display='flex';}}
   function nextTurn(){currentPlayer=(currentPlayer+1)%players.length;status.textContent=`Turn: ${players[currentPlayer].name}`;}
   function resetGame(){players.forEach(p=>p.pos=0);currentPlayer=0;drawBoard();status.textContent='Game reset.';}
@@ -128,25 +145,18 @@
     const rect = canvas.getBoundingClientRect();
     const mx = (e.clientX - rect.left) * (canvas.width / rect.width),
           my = (e.clientY - rect.top) * (canvas.height / rect.height);
-    let best = -1, bestD = 1e9;
-    path.forEach((p,i)=>{ const dx=p.x-mx, dy=p.y-my, d=dx*dx+dy*dy; if(d<bestD){bestD=d; best=i;} });
-    if (best >= 0) {
-      players[currentPlayer].pos = best;
-      drawBoard();
-      onLand(best);
-      if (pendingRoll) {
-        status.textContent = `${players[currentPlayer].name} moved after rolling ${pendingRoll}.`;
-        pendingRoll = 0;
-      }
-    }
+    let best=-1, bestD=1e9; path.forEach((p,i)=>{ const dx=p.x-mx, dy=p.y-my, d=dx*dx+dy*dy; if(d<bestD){bestD=d; best=i;} });
+    if(best>=0){ players[currentPlayer].pos=best; drawBoard(); onLand(best); if(pendingRoll){ status.textContent=`${players[currentPlayer].name} moved after rolling ${pendingRoll}.`; pendingRoll=0; } }
   });
 
   const colorChoices=["red","blue","green","yellow","purple","orange"];
-  function buildForms(){playerForms.innerHTML='';const n=parseInt(numPlayersSelect.value,10);for(let i=0;i<n;i++){const box=document.createElement('div');box.className='player-input';box.innerHTML=`<label><strong>Player ${i+1} Name</strong><br><input id="pname${i}" type="text" placeholder="Player ${i+1}" style="padding:8px;border:1px solid #e5e7eb;border-radius:10px;width:100%"/></label>`;const colorsDiv=document.createElement('div');colorsDiv.className='color-options';colorChoices.forEach(col=>{const dot=document.createElement('div');dot.className='swatch';dot.style.background=col;dot.dataset.color=col;dot.onclick=()=>{colorsDiv.querySelectorAll('.swatch').forEach(s=>s.classList.remove('selected'));dot.classList.add('selected');};colorsDiv.appendChild(dot);});box.appendChild(colorsDiv);playerForms.appendChild(box);}} buildForms();buildBtn.onclick=buildForms;
+  function buildForms(){playerForms.innerHTML='';const n=parseInt(numPlayersSelect.value,10);for(let i=0;i<n;i++){const box=document.createElement('div');box.className='player-input';box.innerHTML=`<label><strong>Player ${i+1} Name</strong><br><input id="pname${i}" type="text" placeholder="Player ${i+1}" style="padding:8px;border:1px solid #e5e7eb;border-radius:10px;width:100%"/></label>`;const colorsDiv=document.createElement('div');colorsDiv.className='color-options';colorChoices.forEach(col=>{const dot=document.createElement('div');dot.className='swatch';dot.style.background=col;dot.dataset.color=col;dot.onclick=()=>{colorsDiv.querySelectorAll('.swatch').forEach(s=>s.classList.remove('selected'));dot.classList.add('selected');};colorsDiv.appendChild(dot);});box.appendChild(colorsDiv);playerForms.appendChild(box);} }
+  buildForms(); buildBtn.onclick=buildForms;
 
-  startBtn.onclick=async()=>{players=[];const n=parseInt(numPlayersSelect.value,10);const taken=new Set();for(let i=0;i<n;i++){const name=document.getElementById(`pname${i}`).value||`Player ${i+1}`;const selected=playerForms.children[i].querySelector('.swatch.selected');let color=selected?selected.dataset.color:colorChoices.find(c=>!taken.has(c))||palette[i%palette.length];taken.add(color);players.push({name,color,pos:0});}await loadQuestions(sheetUrlInput.value.trim());buildPath();setupDiv.style.display='none';controls.style.display='flex';canvas.style.display='block';drawBoard();status.textContent=`Turn: ${players[0].name}`;};
+  startBtn.onclick=async()=>{players=[];const n=parseInt(numPlayersSelect.value,10);const taken=new Set();for(let i=0;i<n;i++){const name=document.getElementById(`pname${i}`).value||`Player ${i+1}`;const selected=playerForms.children[i].querySelector('.swatch.selected');let color=selected?selected.dataset.color:colorChoices.find(c=>!taken.has(c))||palette[i%palette.length];taken.add(color);players.push({name,color,pos:0});}
+    await loadQuestions(sheetUrlInput.value.trim()); buildPath(); setupDiv.style.display='none'; controls.style.display='flex'; canvas.style.display='block'; drawBoard(); status.textContent=`Turn: ${players[0].name}`; };
 
-  rollBtn.onclick=rollDice;nextBtn.onclick=nextTurn;resetBtn.onclick=resetGame;
+  rollBtn.onclick=rollDice; nextBtn.onclick=nextTurn; resetBtn.onclick=resetGame;
 })();
 </script>
 </body>
