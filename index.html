@@ -7,7 +7,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap" rel="stylesheet">
   <style>
     :root{ --tile:84; --gapY:140; }
-    body{font-family: 'Luckiest Guy', cursive; background:#f0f4f8; margin:0}
+    body{font-family: Tahoma, Geneva, Verdana, sans-serif; background:#f0f4f8; margin:0}
     /* ~25% smaller title per your request earlier */
     h1{margin:18px 0 6px; text-align:center; font-size:clamp(20px,3.2vw,32px); font-weight:900; letter-spacing:.3px;
        background: linear-gradient(90deg,#a855f7,#ec4899,#f97316); -webkit-background-clip:text; -webkit-text-fill-color:transparent;
@@ -34,7 +34,7 @@
 </head>
 <body>
   <div class="wrap">
-    <h1>Board Game: Adjective & Prepositions, What's your Position?</h1>
+    <h1 style="display:none">Board Game: Adjective & Prepositions, What's your Position?</h1>
 
     <div class="setup" id="setup">
       <div class="row">
@@ -72,7 +72,7 @@
       <span id="status"></span>
     </div>
 
-    <canvas id="board" width="1200" height="900" aria-label="Game board"></canvas>
+    <canvas id="board" width="1300" height="900" aria-label="Game board"></canvas>
   </div>
 
   <div id="questionModal">
@@ -86,7 +86,7 @@
 <script>
 (()=>{
   // ----- Config -----
-  const TOTAL = 49;            // tiles
+  const TOTAL = 50;            // tiles
   const TILES_PER_ROW = 9;     // horizontal run
   const TILE = 84;             // tile size (px)
   const STEP_Y = 140;          // vertical distance between row centers
@@ -145,9 +145,15 @@
       roundedRect(x,y,TILE,TILE,RADIUS);
       ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#111'; ctx.stroke();
       ctx.fillStyle = '#111';
-      ctx.font = 'bold 20px "Luckiest Guy", cursive';
+      ctx.font = 'bold 35px "Luckiest Guy", cursive';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(String(i+1), p.x, p.y);
+      if(i === TOTAL-1){
+        ctx.font = 'bold 22px "Luckiest Guy", cursive';
+        ctx.fillText('FINISH', p.x, p.y);
+        ctx.font = 'bold 35px "Luckiest Guy", cursive';
+      } else {
+        ctx.fillText(String(i+1), p.x, p.y);
+      }
     });
     // tokens
     players.forEach((pl,idx)=>{
@@ -164,16 +170,31 @@
 
   function buildPath(){
     path = [];
-    const margin = Math.max(TILE/2 + 30, 60);
-    const stepX = (canvas.width - 2*margin) / (TILES_PER_ROW - 1); // auto-fit horizontally
-    const startX = margin;
+    const stepX = TILE; // tiles touch horizontally
+    const startX = (canvas.width - (TILES_PER_ROW - 1) * stepX) / 2;
     const startY = canvas.height - 120;
     let i=0, row=0;
     while(i < TOTAL){
       const y = startY - row*STEP_Y;
-      if(row % 2 === 0){ // left -> right
-        for(let c=0;c<TILES_PER_ROW && i<TOTAL;c++){
-          path.push({x:startX + c*stepX, y}); i++; }
+      if(row % 2 === 0){
+        for(let c=0;c<TILES_PER_ROW && i<TOTAL;c++){ path.push({x:startX + c*stepX, y}); i++; }
+      } else {
+        for(let c=TILES_PER_ROW-1;c>=0 && i<TOTAL;c--){ path.push({x:startX + c*stepX, y}); i++; }
+      }
+      if(i < TOTAL){
+        const last = path[path.length-1];
+        const midY = y - STEP_Y/2; // halfway up
+        const d = Math.max(0, Math.sqrt(Math.max(0, TILE*TILE - (STEP_Y/2)*(STEP_Y/2))));
+        const shift = (row%2===0 ? +d : -d); // curve OUTWARD
+        let cx = last.x + shift;
+        const margin = TILE/2 + 10;
+        cx = Math.min(canvas.width - margin, Math.max(margin, cx));
+        path.push({x: cx, y: midY});
+        i++;
+      }
+      row++;
+    }
+  }); i++; }
       } else { // right -> left
         for(let c=TILES_PER_ROW-1;c>=0 && i<TOTAL;c--){
           path.push({x:startX + c*stepX, y}); i++; }
@@ -227,7 +248,17 @@
   }
   function onLand(index){
     if(index>=0 && index<TOTAL){
+      if(index === TOTAL-1){
+        tileLabel.textContent = 'FINISH';
+        questionText.textContent = '🎉 Congratulations! You reached the finish!';
+        modal.style.display='flex';
+        return;
+      }
       tileLabel.textContent = `Tile #${index+1}`;
+      questionText.textContent = questions[index] || `Question ${index+1}`;
+      modal.style.display='flex';
+    }
+  }`;
       questionText.textContent = questions[index] || `Question ${index+1}`;
       modal.style.display='flex';
     }
@@ -283,7 +314,6 @@
 
   // Start game
   startBtn.addEventListener('click', async ()=>{
-    // gather players
     players = [];
     const n = parseInt(numPlayersSelect.value,10);
     const taken = new Set();
@@ -298,12 +328,18 @@
     await loadQuestions(sheetUrlInput.value.trim());
     const newTitle = (customTitleInput.value || '').trim();
     if(newTitle){ titleEl.textContent = newTitle; document.title = newTitle; }
+    // show title only after starting
+    titleEl.style.display = 'block';
+    // switch to game font after start
+    document.body.style.fontFamily = '"Luckiest Guy", cursive';
 
     buildPath();
     setupDiv.style.display='none';
     controls.style.display='flex';
     canvas.style.display='block';
     drawBoard();
+    logTurn(`Turn: ${players[0].name}`);
+  });
     logTurn(`Turn: ${players[0].name}`);
   });
 
